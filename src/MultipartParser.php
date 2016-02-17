@@ -147,29 +147,36 @@ class MultipartParser
         $match = array();
         preg_match('/Content-Type: (?P<mime>.*)?/', $string, $match);
         $mime = $match['mime'];
-        //Do not use preg_match function to parse entire request body because of multiplying (twice) allocated memory for content data
-        $pos = strpos($string, "\r\n\r\n");
-        $string = substr_replace($string, '', 0, $pos);
-        $string = trim($string, "\r\n");
-        // Put content in a stream
-        $stream = fopen('php://temp', 'r+');
-        if ($string !== '') {
-            fwrite($stream, $string);
-            fseek($stream, 0);
+        //Trim content
+        $needle = "\r\n\r\n";
+        $pos = strpos($string, $needle);
+        if (false !== $pos) {
+            $string = substr_replace($string, '', 0, $pos);    
         }
+       $needle = "\r\n";
+        $pos = strrpos($string, $needle);
+        if (false !== $pos) {
+            $string = substr_replace($string, '', -strlen($needle), strlen($needle));
+        }
+        $string = trim($string, "\r\n");
+        //var_dump($string);
+        // Put content in a file
+        $path = tempnam(sys_get_temp_dir(), "php");
+        
+        $fp = fopen($path, 'w');
+        stream_set_write_buffer($fp, 0);
+        $err = fwrite($fp, $string);
+        fclose($fp);
+        
+
         $data = [
+            'tmp_name' => $path,
             'name' => $filename,
             'type' => trim($mime),
-            'stream' => $stream, // Instead of writing to a file, we write to a stream.
-            'error' => UPLOAD_ERR_OK,
+            'error' => ($err === false) ? UPLOAD_ERR_NO_FILE : UPLOAD_ERR_OK,
             'size' => function_exists('mb_strlen')? mb_strlen($string, '8bit') : strlen($string),
         ];
-        //TODO :: have an option to write to files to emulate the same functionality as a real php server
-        //$path = tempnam(sys_get_temp_dir(), "php");
-        //$err = file_put_contents($path, $content);
-        //$data['tmp_name'] = $path;
-        //$data['error'] = ($err === false) ? UPLOAD_ERR_NO_FILE : UPLOAD_ERR_OK;
-
+        unset($string);
         $this->addResolved('files', $name, $data);
     }
 
