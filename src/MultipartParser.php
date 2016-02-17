@@ -153,13 +153,12 @@ class MultipartParser
         if (false !== $pos) {
             $string = substr_replace($string, '', 0, $pos);    
         }
-       $needle = "\r\n";
+        $needle = "\r\n";
         $pos = strrpos($string, $needle);
         if (false !== $pos) {
             $string = substr_replace($string, '', -strlen($needle), strlen($needle));
         }
         $string = trim($string, "\r\n");
-        //var_dump($string);
         // Put content in a file
         $path = tempnam(sys_get_temp_dir(), "php");
         
@@ -167,7 +166,6 @@ class MultipartParser
         stream_set_write_buffer($fp, 0);
         $err = fwrite($fp, $string);
         fclose($fp);
-        
 
         $data = [
             'tmp_name' => $path,
